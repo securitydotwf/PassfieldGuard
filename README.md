@@ -1,5 +1,6 @@
 # PassfieldGuard
 A Google Chrome browser extension that blocks all password fields unless the URL is whitelisted.
+This will prevent your end-users to fill in passwords when unknownly visiting a phishing web-page or when received a HTML page as attachement in their e-mail. 
 
 ## Introduction
 How many passwords do you need to fill in on a weekly basis on your corporate laptop? Generally, end-users are required to enter only a few passwords each week. By manually whitelisting these URLs, you can ensure that no passwords are leaked through phishing attempts. Most companies use Microsoft SSO, where there is minimal need to enter passwords frequently.
