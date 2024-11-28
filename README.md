@@ -1,4 +1,6 @@
-# PassfieldGuard
+![128](https://github.com/user-attachments/assets/f5cf5381-7e22-4b27-91ff-03328285a26c)
+# PassfieldGuard![128](https://github.com/user-attachments/assets/d2943f0c-8c2f-447e-9efd-9562b41a1ee7)
+
 
 A Google Chrome browser extension that blocks all password fields unless the URL is whitelisted. This will prevent your end-users from filling in passwords when unknowingly visiting a phishing web page or when receiving an HTML page as an attachment in their email.
 
