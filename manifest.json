@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Password Field Blocker",
+  "name": "PassfieldGuard",
   "description": "Blocks password fields unless the URL is defined on a whitelist.",
   "version": "1.0",
   "permissions": [
