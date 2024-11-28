@@ -1,6 +1,3 @@
-const currentDomain = window.location.hostname;
-console.log("Current domain:", currentDomain);
-
 // Debounce function to limit the frequency of function calls
 function debounce(func, wait) {
   let timeout;
@@ -9,6 +6,9 @@ function debounce(func, wait) {
     timeout = setTimeout(() => func.apply(this, args), wait);
   };
 }
+
+const currentDomain = window.location.hostname;
+console.log("Current domain:", currentDomain);
 
 // Send a message to the background script to check if the domain is whitelisted
 chrome.runtime.sendMessage({ action: "isWhitelisted", domain: currentDomain }, (response) => {
@@ -95,7 +95,7 @@ function blockFieldInteractions(field) {
 
 function createRequestButton() {
   const requestButton = document.createElement("button");
-  requestButton.classList.add('request-unlock-button'); // Add a class to identify the button
+  requestButton.classList.add('request-unlock-button');
   requestButton.style.padding = "5px";
   requestButton.style.backgroundColor = "#FF0000";
   requestButton.style.color = "white";
@@ -104,10 +104,11 @@ function createRequestButton() {
   requestButton.style.cursor = "pointer";
   requestButton.style.fontSize = "12px";
   requestButton.style.marginLeft = "10px";
-  requestButton.style.height = "100%"; // Match height to the password field
-  requestButton.style.verticalAlign = "middle"; // Align button
+  requestButton.style.height = "100%";
+  requestButton.style.verticalAlign = "middle";
 
-  // Fetch support email and other details from background.js and use it for the mailto link
+  requestButton.textContent = "Request Unlock";  // Ensure button text is set
+
   chrome.runtime.sendMessage({ action: "getSupportEmail" }, (response) => {
     const supportEmail = response && response.supportEmail ? response.supportEmail : "support@example.com";
     const requestButtonTitle = response && response.requestButtonTitle ? response.requestButtonTitle : "Request to unlock";
@@ -115,8 +116,8 @@ function createRequestButton() {
     const emailBody = response && response.emailBody ? response.emailBody : `Dear Admin,\n\nI would like to request unlocking the password field on the website: ${window.location.href}.\n\nThank you!`;
     const hoverText = response && response.hoverText ? response.hoverText : "Click to request unlocking this password field. Your request will be reviewed by the IT security team.";
 
-    requestButton.title = hoverText; // Set hover text
-    requestButton.textContent = requestButtonTitle; // Ensure the button text is set
+    requestButton.title = hoverText;
+    requestButton.textContent = requestButtonTitle;
 
     const mailtoLink = `mailto:${supportEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody + "\n\n" + window.location.href)}`;
 
