@@ -1,46 +1,59 @@
 const currentDomain = window.location.hostname;
 console.log("Current domain:", currentDomain);
 
+// Debounce function to limit the frequency of function calls
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
 // Send a message to the background script to check if the domain is whitelisted
 chrome.runtime.sendMessage({ action: "isWhitelisted", domain: currentDomain }, (response) => {
   if (response && response.isWhitelisted === false) {
     console.log(`${currentDomain} is not whitelisted. Blocking password fields.`);
 
-    blockPasswordFields(document);
+    try {
+      blockPasswordFields(document);
 
-    // Also check for password fields in dynamically loaded content (e.g., login forms)
-    const loginFormSelector = 'form, .login, .auth, .sign-in'; // Adjust as needed for your use case
-    const loginForms = document.querySelectorAll(loginFormSelector);
+      // Also check for password fields in dynamically loaded content (e.g., login forms)
+      const loginFormSelector = 'form, .login, .auth, .sign-in'; // Adjust as needed for your use case
+      const loginForms = document.querySelectorAll(loginFormSelector);
 
-    loginForms.forEach((form) => {
-      const observer = new MutationObserver(() => {
-        blockPasswordFields(form);
+      loginForms.forEach((form) => {
+        const observer = new MutationObserver(debounce(() => {
+          blockPasswordFields(form);
+        }, 300));
+
+        observer.observe(form, {
+          childList: true,
+          subtree: true,
+        });
       });
 
-      observer.observe(form, {
-        childList: true,
-        subtree: true,
-      });
-    });
+      // Handle password fields inside iframes (if any)
+      document.querySelectorAll("iframe").forEach((iframe) => {
+        try {
+          const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+          if (iframeDocument) {
+            const iframeObserver = new MutationObserver(debounce(() => {
+              blockPasswordFields(iframeDocument);
+            }, 300));
 
-    // Handle password fields inside iframes (if any)
-    document.querySelectorAll("iframe").forEach((iframe) => {
-      try {
-        const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
-        if (iframeDocument) {
-          const iframeObserver = new MutationObserver(() => {
-            blockPasswordFields(iframeDocument);
-          });
-
-          iframeObserver.observe(iframeDocument.body, {
-            childList: true,
-            subtree: true,
-          });
+            iframeObserver.observe(iframeDocument.body, {
+              childList: true,
+              subtree: true,
+            });
+          }
+        } catch (error) {
+          console.error("Error accessing iframe content:", error);
         }
-      } catch (error) {
-        console.error("Error accessing iframe content:", error);
-      }
-    });
+      });
+    } catch (error) {
+      console.error("Error blocking password fields:", error);
+    }
   } else {
     console.log(`${currentDomain} is whitelisted. Password fields should not be blocked.`);
   }
@@ -54,15 +67,18 @@ function blockPasswordFields(doc) {
       return;
     }
 
-    field.style.border = "2px solid red";
-    field.style.boxShadow = "0 0 5px 2px rgba(255, 0, 0, 0.7)";
-    blockFieldInteractions(field);
-    field.setAttribute("autocomplete", "new-password"); // Prevent autofill
-    field.setAttribute("tabindex", "-1"); // Prevent focus
-    field.style.pointerEvents = "none"; // Disable clicking
+    // Check if the button already exists
+    if (!field.nextSibling || !field.nextSibling.classList || !field.nextSibling.classList.contains('request-unlock-button')) {
+      field.style.border = "2px solid red";
+      field.style.boxShadow = "0 0 5px 2px rgba(255, 0, 0, 0.7)";
+      blockFieldInteractions(field);
+      field.setAttribute("autocomplete", "new-password"); // Prevent autofill
+      field.setAttribute("tabindex", "-1"); // Prevent focus
+      field.style.pointerEvents = "none"; // Disable clicking
 
-    const requestButton = createRequestButton();
-    field.parentNode.insertBefore(requestButton, field.nextSibling);
+      const requestButton = createRequestButton();
+      field.parentNode.insertBefore(requestButton, field.nextSibling);
+    }
   });
 }
 
@@ -79,7 +95,7 @@ function blockFieldInteractions(field) {
 
 function createRequestButton() {
   const requestButton = document.createElement("button");
-  requestButton.textContent = "Request to unlock";
+  requestButton.classList.add('request-unlock-button'); // Add a class to identify the button
   requestButton.style.padding = "5px";
   requestButton.style.backgroundColor = "#FF0000";
   requestButton.style.color = "white";
@@ -91,18 +107,18 @@ function createRequestButton() {
   requestButton.style.height = "100%"; // Match height to the password field
   requestButton.style.verticalAlign = "middle"; // Align button
 
-  requestButton.title =
-    "You cannot enter this field due to the activated security policy. Please request access via email, the IT security team will review your request and ad it to the whitelist on shortest term.";
-
-  // Fetch support email from background.js and use it for the mailto link
+  // Fetch support email and other details from background.js and use it for the mailto link
   chrome.runtime.sendMessage({ action: "getSupportEmail" }, (response) => {
     const supportEmail = response && response.supportEmail ? response.supportEmail : "support@example.com";
+    const requestButtonTitle = response && response.requestButtonTitle ? response.requestButtonTitle : "Request to unlock";
+    const emailSubject = response && response.emailSubject ? response.emailSubject : "Request to unlock password field";
+    const emailBody = response && response.emailBody ? response.emailBody : `Dear Admin,\n\nI would like to request unlocking the password field on the website: ${window.location.href}.\n\nThank you!`;
+    const hoverText = response && response.hoverText ? response.hoverText : "Click to request unlocking this password field. Your request will be reviewed by the IT security team.";
 
-    const emailSubject = encodeURIComponent("Request to unlock password field");
-    const emailBody = encodeURIComponent(
-      `Dear Admin,\n\nI would like to request unlocking the password field on the website: ${window.location.href}.\n\nThank you!`
-    );
-    const mailtoLink = `mailto:${supportEmail}?subject=${emailSubject}&body=${emailBody}`;
+    requestButton.title = hoverText; // Set hover text
+    requestButton.textContent = requestButtonTitle; // Ensure the button text is set
+
+    const mailtoLink = `mailto:${supportEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody + "\n\n" + window.location.href)}`;
 
     requestButton.addEventListener("click", () => {
       window.location.href = mailtoLink;

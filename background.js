@@ -1,22 +1,31 @@
-let whitelistUrl = "https://defaulturl.com/whitelist.txt";  // Default URL if not configured
+let whitelistUrl = "https://default.com/whitelist.txt";  // Default URL if not configured
 let supportEmail = "support@example.com";  // Default email if not configured
+let requestButtonTitle = "Request to unlock";  // Default title if not configured
+let emailSubject = "Request to unlock password field";  // Default subject if not configured
+let emailBody = "Dear Admin,\n\nI would like to request unlocking the password field on the website: ${window.location.href}.\n\nThank you!";  // Default body if not configured
 let whitelist = [];
 
 // A flag to indicate if the configuration has finished loading
 let configLoaded = false;
 
-// Fetch configuration from the server
+// Fetch configuration from config.json
 async function loadConfig() {
   try {
-    const response = await fetch("https://locationofjsonconfig.com/config.json");
+    const response = await fetch('Data/config.json');  // Corrected the path to config.json
     const config = await response.json();
 
     // Use values from config if available
     whitelistUrl = config.whitelistUrl || whitelistUrl;
     supportEmail = config.supportEmail || supportEmail;
+    requestButtonTitle = config.requestButtonTitle || requestButtonTitle;
+    emailSubject = config.emailSubject || emailSubject;
+    emailBody = config.emailBody || emailBody;
 
     console.log("Using whitelist URL:", whitelistUrl);
     console.log("Using support email:", supportEmail);
+    console.log("Using request button title:", requestButtonTitle);
+    console.log("Using email subject:", emailSubject);
+    console.log("Using email body:", emailBody);
 
     configLoaded = true;  // Mark config as loaded
     loadWhitelist();  // Load the whitelist after fetching config
@@ -52,9 +61,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ isWhitelisted });
   } else if (message.action === "getSupportEmail") {
     if (configLoaded) {
-      sendResponse({ supportEmail });
+      sendResponse({ supportEmail, requestButtonTitle, emailSubject, emailBody });
     } else {
-      sendResponse({ supportEmail: "support@example.com" });  // Fallback if config is not loaded
+      sendResponse({ supportEmail: "support@example.com", requestButtonTitle, emailSubject, emailBody });  // Fallback if config is not loaded
     }
   }
 });
