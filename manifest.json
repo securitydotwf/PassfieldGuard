@@ -7,6 +7,9 @@
     "storage",
     "activeTab"
   ],
+  "host_permissions": [
+    "https://*/*"  // Add the URL pattern for the whitelist URL
+  ],
   "background": {
     "service_worker": "background.js"
   },
@@ -27,7 +30,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["data/whitelist.txt"],
+      "resources": ["data/whitelist.txt"],  // Ensure the path is correct for the local whitelist file
       "matches": ["<all_urls>"]
     }
   ],
