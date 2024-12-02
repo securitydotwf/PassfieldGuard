@@ -1,8 +1,8 @@
-let whitelistUrl = "https://default.com/whitelist.txt";  // Default URL if not configured
+let whitelistUrl2 = "https://default.com/whitelist.txt";  // Default URL if not configured
 let supportEmail = "support@example.com";  // Default email if not configured
 let requestButtonTitle = "Request to unlock";  // Default title if not configured
 let emailSubject = "Request to unlock password field";  // Default subject if not configured
-let emailBodyTemplate = "Dear Admin,\n\nI would like to request unlocking the password field on the website: ${url}.\n\nThank you!";  // Default body template
+let emailBody = "Dear Admin,\n\nI would like to request unlocking the password field on the website: ${window.location.href}.\n\nThank you!";  // Default body if not configured
 let whitelist = [];
 
 // A flag to indicate if the configuration has finished loading
@@ -11,31 +11,38 @@ let configLoaded = false;
 // Fetch configuration from config.json
 async function loadConfig() {
   try {
-    const response = await fetch('Data/config.json');  // Corrected the path to config.json
+    const response = await fetch(chrome.runtime.getURL('DATA/config.json'));  // Corrected the path to config.json
     const config = await response.json();
 
     // Use values from config if available
-    whitelistUrl = config.whitelistUrl || whitelistUrl;
+    let whitelistUrl = config.whitelistUrl || whitelistUrl2;
     supportEmail = config.supportEmail || supportEmail;
     requestButtonTitle = config.requestButtonTitle || requestButtonTitle;
     emailSubject = config.emailSubject || emailSubject;
-    emailBodyTemplate = config.emailBody || emailBodyTemplate;
+    emailBody = config.emailBody || emailBody;
 
     console.log("Using whitelist URL:", whitelistUrl);
     console.log("Using support email:", supportEmail);
     console.log("Using request button title:", requestButtonTitle);
     console.log("Using email subject:", emailSubject);
-    console.log("Using email body:", emailBodyTemplate);
+    console.log("Using email body:", emailBody);
 
     configLoaded = true;  // Mark config as loaded
-    loadWhitelist();  // Load the whitelist after fetching config
+    loadWhitelist(whitelistUrl);  // Load the whitelist after fetching config
+
+    // Start periodic update check
+    setInterval(() => loadWhitelist(whitelistUrl), 60000);  // Check for updates every 1 minute
   } catch (error) {
     console.error("Error loading config:", error);
+    loadWhitelist(whitelistUrl2);  // Fallback to default URL if config loading fails
+
+    // Start periodic update check with fallback URL
+    setInterval(() => loadWhitelist(whitelistUrl2), 60000);  // Check for updates every 1 minute
   }
 }
 
 // Load the whitelist
-async function loadWhitelist() {
+async function loadWhitelist(whitelistUrl) {
   try {
     if (!configLoaded) {
       console.log("Config not loaded yet.");
@@ -56,27 +63,16 @@ async function loadWhitelist() {
 // Listen for messages from content scripts to check if a domain is whitelisted or get support email
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "isWhitelisted") {
+    console.log("Received domain check request for:", message.domain);
+    console.log("Current whitelist:", whitelist);  // Log the current whitelist for debugging
     const isWhitelisted = whitelist.includes(message.domain);
     console.log(`Checking if ${message.domain} is whitelisted:`, isWhitelisted);
     sendResponse({ isWhitelisted });
   } else if (message.action === "getSupportEmail") {
-    // Use the message domain URL to populate the email body
-    const emailBody = emailBodyTemplate.replace('${url}', message.url || window.location.href);
-    
     if (configLoaded) {
-      sendResponse({
-        supportEmail,
-        requestButtonTitle,
-        emailSubject,
-        emailBody
-      });
+      sendResponse({ supportEmail, requestButtonTitle, emailSubject, emailBody });
     } else {
-      sendResponse({
-        supportEmail: "support@example.com",  // Fallback if config is not loaded
-        requestButtonTitle,
-        emailSubject,
-        emailBody
-      });
+      sendResponse({ supportEmail: "support@example.com", requestButtonTitle, emailSubject, emailBody });  // Fallback if config is not loaded
     }
   }
 });

@@ -1,7 +1,7 @@
 // Debounce function to limit the frequency of function calls
 function debounce(func, wait) {
   let timeout;
-  return function(...args) {
+  return function (...args) {
     clearTimeout(timeout);
     timeout = setTimeout(() => func.apply(this, args), wait);
   };
@@ -51,6 +51,16 @@ chrome.runtime.sendMessage({ action: "isWhitelisted", domain: currentDomain }, (
           console.error("Error accessing iframe content:", error);
         }
       });
+
+      // Handle Shadow DOMs properly (iterate through all shadow hosts and query password fields inside)
+      const shadowHosts = document.querySelectorAll('*');
+      shadowHosts.forEach((host) => {
+        if (host.shadowRoot) {
+          const shadowDoc = host.shadowRoot;
+          blockPasswordFields(shadowDoc); // Query password fields within the shadow DOM
+        }
+      });
+
     } catch (error) {
       console.error("Error blocking password fields:", error);
     }
@@ -59,29 +69,37 @@ chrome.runtime.sendMessage({ action: "isWhitelisted", domain: currentDomain }, (
   }
 });
 
+// Block password fields using a robust selector
 function blockPasswordFields(doc) {
-  const passwordFields = doc.querySelectorAll('input[type="password"]');
+  // Use a more robust selector to detect password fields
+  const passwordFields = doc.querySelectorAll('input[type="password"], input[class*="password"], input[id*="password"]');
   passwordFields.forEach((field) => {
     // If the field is inside a critical form, don't block it
     if (field.closest('form') && field.closest('form').querySelector('.login, .auth, .sign-in')) {
       return;
     }
 
-    // Check if the button already exists
-    if (!field.nextSibling || !field.nextSibling.classList || !field.nextSibling.classList.contains('request-unlock-button')) {
-      field.style.border = "2px solid red";
-      field.style.boxShadow = "0 0 5px 2px rgba(255, 0, 0, 0.7)";
-      blockFieldInteractions(field);
-      field.setAttribute("autocomplete", "new-password"); // Prevent autofill
-      field.setAttribute("tabindex", "-1"); // Prevent focus
-      field.style.pointerEvents = "none"; // Disable clicking
+    // Ensure the field is not null or undefined before manipulating it
+    if (field) {
+      // Check if the button already exists
+      if (!field.nextSibling || !field.nextSibling.classList || !field.nextSibling.classList.contains('request-unlock-button')) {
+        field.style.border = "2px solid red";
+        field.style.boxShadow = "0 0 5px 2px rgba(255, 0, 0, 0.7)";
+        blockFieldInteractions(field);
+        field.setAttribute("autocomplete", "new-password"); // Prevent autofill
+        field.setAttribute("tabindex", "-1"); // Prevent focus
+        field.style.pointerEvents = "none"; // Disable clicking
 
-      const requestButton = createRequestButton();
-      field.parentNode.insertBefore(requestButton, field.nextSibling);
+        const requestButton = createRequestButton();
+        field.parentNode.insertBefore(requestButton, field.nextSibling);
+      }
+    } else {
+      console.error('Password field not found or is null');
     }
   });
 }
 
+// Prevent interactions with the field
 function blockFieldInteractions(field) {
   // Prevent typing, pasting, dragging, etc.
   field.addEventListener("keydown", (event) => event.preventDefault());
@@ -93,6 +111,7 @@ function blockFieldInteractions(field) {
   field.addEventListener("contextmenu", (event) => event.preventDefault());
 }
 
+// Create the "Request Unlock" button
 function createRequestButton() {
   const requestButton = document.createElement("button");
   requestButton.classList.add('request-unlock-button');
@@ -109,6 +128,7 @@ function createRequestButton() {
 
   requestButton.textContent = "Request Unlock";  // Ensure button text is set
 
+  // Fetch support email and other details from background.js and use it for the mailto link
   chrome.runtime.sendMessage({ action: "getSupportEmail" }, (response) => {
     const supportEmail = response && response.supportEmail ? response.supportEmail : "support@example.com";
     const requestButtonTitle = response && response.requestButtonTitle ? response.requestButtonTitle : "Request to unlock";
