@@ -28,13 +28,13 @@ async function loadConfig() {
     console.log("Using email body:", emailBody);
 
     configLoaded = true;  // Mark config as loaded
-    loadWhitelist(whitelistUrl);  // Load the whitelist after fetching config
+    await loadWhitelist(whitelistUrl);  // Load the whitelist after fetching config
 
     // Start periodic update check
     setInterval(() => loadWhitelist(whitelistUrl), 60000);  // Check for updates every 1 minute
   } catch (error) {
     console.error("Error loading config:", error);
-    loadWhitelist(whitelistUrl2);  // Fallback to default URL if config loading fails
+    await loadWhitelist(whitelistUrl2);  // Fallback to default URL if config loading fails
 
     // Start periodic update check with fallback URL
     setInterval(() => loadWhitelist(whitelistUrl2), 60000);  // Check for updates every 1 minute

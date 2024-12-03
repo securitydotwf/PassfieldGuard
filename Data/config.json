@@ -1,5 +1,5 @@
 {
-  "whitelistUrl": "https://CHANGETOYOURDOMAIN.com/whitelist.txt",
+  "whitelistUrl": "https://yoururllocation.com/whitelist.txt",
   "supportEmail": "thisisatest@yourdomain.com",
   "requestButtonTitle": "Request to unlock",
   "emailSubject": "Request to unlock password field",
