@@ -4,6 +4,7 @@ let requestButtonTitle = "Request to unlock";  // Default title if not configure
 let emailSubject = "Request to unlock password field";  // Default subject if not configured
 let emailBody = "Dear Admin,\n\nI would like to request unlocking the password field on the website: ${window.location.href}.\n\nThank you!";  // Default body if not configured
 let whitelist = [];
+let lastModified = null;  // Variable to store the last modified date
 
 // A flag to indicate if the configuration has finished loading
 let configLoaded = false;
@@ -28,27 +29,45 @@ async function loadConfig() {
     console.log("Using email body:", emailBody);
 
     configLoaded = true;  // Mark config as loaded
-    await loadWhitelist(whitelistUrl);  // Load the whitelist after fetching config
+    await checkWhitelistUpdate(whitelistUrl);  // Check for whitelist update after fetching config
 
     // Start periodic update check
-    setInterval(() => loadWhitelist(whitelistUrl), 60000);  // Check for updates every 1 minute
+    setInterval(() => checkWhitelistUpdate(whitelistUrl), 60000);  // Check for updates every 1 minute
   } catch (error) {
     console.error("Error loading config:", error);
-    await loadWhitelist(whitelistUrl2);  // Fallback to default URL if config loading fails
+    await checkWhitelistUpdate(whitelistUrl2);  // Fallback to default URL if config loading fails
 
     // Start periodic update check with fallback URL
-    setInterval(() => loadWhitelist(whitelistUrl2), 60000);  // Check for updates every 1 minute
+    setInterval(() => checkWhitelistUpdate(whitelistUrl2), 60000);  // Check for updates every 1 minute
+  }
+}
+
+// Check if the whitelist file has been updated
+async function checkWhitelistUpdate(whitelistUrl) {
+  try {
+    if (!configLoaded) {
+      console.log("Config not loaded yet.");
+      return; // Don't proceed with checking the whitelist if config is not loaded
+    }
+
+    const response = await fetch(whitelistUrl, { method: 'HEAD' });
+    const newLastModified = response.headers.get('Last-Modified');
+
+    if (newLastModified && new Date(newLastModified) > new Date(lastModified)) {
+      console.log("Whitelist file has been updated. Fetching new content.");
+      lastModified = newLastModified;
+      await loadWhitelist(whitelistUrl);
+    } else {
+      console.log("Whitelist file has not been updated.");
+    }
+  } catch (error) {
+    console.error("Error checking whitelist update:", error);
   }
 }
 
 // Load the whitelist
 async function loadWhitelist(whitelistUrl) {
   try {
-    if (!configLoaded) {
-      console.log("Config not loaded yet.");
-      return; // Don't proceed with loading the whitelist if config is not loaded
-    }
-    
     console.log("Loading whitelist from:", whitelistUrl);
     const response = await fetch(whitelistUrl);
     const text = await response.text();
