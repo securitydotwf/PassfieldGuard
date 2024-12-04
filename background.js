@@ -1,26 +1,31 @@
-let whitelistUrl2 = "https://default.com/whitelist.txt";  // Default URL if not configured
 let supportEmail = "support@example.com";  // Default email if not configured
 let requestButtonTitle = "Request to unlock";  // Default title if not configured
 let emailSubject = "Request to unlock password field";  // Default subject if not configured
 let emailBody = "Dear Admin,\n\nI would like to request unlocking the password field on the website: ${window.location.href}.\n\nThank you!";  // Default body if not configured
 let whitelist = [];
-let lastModified = null;  // Variable to store the last modified date
 
 // A flag to indicate if the configuration has finished loading
 let configLoaded = false;
+let whitelistUrl = "";  // Initialize without a default URL
 
-// Fetch configuration from config.json
+// Fetch configuration from local JSON file
 async function loadConfig() {
   try {
-    const response = await fetch(chrome.runtime.getURL('DATA/config.json'));  // Corrected the path to config.json
+    const response = await fetch('file:///C:/json/config.json');
     const config = await response.json();
 
-    // Use values from config if available
-    let whitelistUrl = config.whitelistUrl || whitelistUrl2;
+    console.log("Local config file items:", config);  // Log the local config file items
+
+    // Use values from local config file if available
+    whitelistUrl = config.whitelistUrl;
     supportEmail = config.supportEmail || supportEmail;
     requestButtonTitle = config.requestButtonTitle || requestButtonTitle;
     emailSubject = config.emailSubject || emailSubject;
     emailBody = config.emailBody || emailBody;
+
+    if (!whitelistUrl) {
+      throw new Error("whitelistUrl is not defined in local config file.");
+    }
 
     console.log("Using whitelist URL:", whitelistUrl);
     console.log("Using support email:", supportEmail);
@@ -29,45 +34,23 @@ async function loadConfig() {
     console.log("Using email body:", emailBody);
 
     configLoaded = true;  // Mark config as loaded
-    await checkWhitelistUpdate(whitelistUrl);  // Check for whitelist update after fetching config
+    await loadWhitelist(whitelistUrl);  // Load the whitelist after fetching config
 
     // Start periodic update check
-    setInterval(() => checkWhitelistUpdate(whitelistUrl), 60000);  // Check for updates every 1 minute
+    setInterval(() => loadWhitelist(whitelistUrl), 60000);  // Check for updates every 1 minute
   } catch (error) {
     console.error("Error loading config:", error);
-    await checkWhitelistUpdate(whitelistUrl2);  // Fallback to default URL if config loading fails
-
-    // Start periodic update check with fallback URL
-    setInterval(() => checkWhitelistUpdate(whitelistUrl2), 60000);  // Check for updates every 1 minute
-  }
-}
-
-// Check if the whitelist file has been updated
-async function checkWhitelistUpdate(whitelistUrl) {
-  try {
-    if (!configLoaded) {
-      console.log("Config not loaded yet.");
-      return; // Don't proceed with checking the whitelist if config is not loaded
-    }
-
-    const response = await fetch(whitelistUrl, { method: 'HEAD' });
-    const newLastModified = response.headers.get('Last-Modified');
-
-    if (newLastModified && new Date(newLastModified) > new Date(lastModified)) {
-      console.log("Whitelist file has been updated. Fetching new content.");
-      lastModified = newLastModified;
-      await loadWhitelist(whitelistUrl);
-    } else {
-      console.log("Whitelist file has not been updated.");
-    }
-  } catch (error) {
-    console.error("Error checking whitelist update:", error);
   }
 }
 
 // Load the whitelist
 async function loadWhitelist(whitelistUrl) {
   try {
+    if (!configLoaded) {
+      console.log("Config not loaded yet.");
+      return; // Don't proceed with loading the whitelist if config is not loaded
+    }
+    
     console.log("Loading whitelist from:", whitelistUrl);
     const response = await fetch(whitelistUrl);
     const text = await response.text();

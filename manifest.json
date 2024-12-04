@@ -3,7 +3,8 @@
   "name": "PassfieldGuard",
   "description": "Blocks password fields unless the URL is defined on a whitelist.",
   "version": "1.1",
-  "permissions": [],
+  "permissions": [
+],
   "host_permissions": [
     "https://*/*"
   ],
@@ -27,11 +28,11 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["DATA/config.json", "data/whitelist.txt"],
+      "resources": ["data/whitelist.txt"],
       "matches": ["<all_urls>"]
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' *"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' file: https:;"
   }
 }
